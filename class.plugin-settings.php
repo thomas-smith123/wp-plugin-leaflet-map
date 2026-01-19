@@ -203,9 +203,39 @@ class Leaflet_Map_Plugin_Settings
                 'type' => 'select',
                 'options' => array(
                     'other' => __('I will provide my own map tile URL', 'leaflet-map'),
+                    'amap' => __('AMap (Gaode / 高德地图)', 'leaflet-map'),
+                    'bing' => __('Bing Maps', 'leaflet-map'),
                     'mapquest' => __('MapQuest (I have an API key)', 'leaflet-map'),
                 ),
                 'helptext' => __('Choose a tiling service or provide your own.', 'leaflet-map')
+            ),
+            'amap_layer' => array(
+                'display_name' => __('AMap Layer Type', 'leaflet-map'),
+                'default' => 'vector',
+                'type' => 'select',
+                'options' => array(
+                    'vector' => __('Road / Vector (默认)', 'leaflet-map'),
+                    'satellite' => __('Satellite / Imagery (卫星图)', 'leaflet-map')
+                ),
+                'helptext' => __('When AMap is selected as the tiling service, choose vector (road) or satellite imagery tiles.', 'leaflet-map')
+            ),
+            'bing_layer' => array(
+                'display_name' => __('Bing Layer Type', 'leaflet-map'),
+                'default' => 'aerial_labels',
+                'type' => 'select',
+                'options' => array(
+                    'road' => __('Road', 'leaflet-map'),
+                    'aerial' => __('Aerial (satellite)', 'leaflet-map'),
+                    'aerial_labels' => __('Aerial with labels', 'leaflet-map'),
+                ),
+                'helptext' => __('When Bing is selected, choose imagery type. Some modes may require a Bing Maps key.', 'leaflet-map')
+            ),
+            'bing_key' => array(
+                'display_name'=>__('Bing Maps Key (optional)', 'leaflet-map'),
+                'default' => __('Supply a Bing Maps key', 'leaflet-map'),
+                'type' => 'text',
+                'noreset' => true,
+                'helptext' => __('If your Bing tiles require a key, provide it here.', 'leaflet-map')
             ),
             'mapquest_appkey' => array(
                 'display_name'=>__('MapQuest API Key (optional)', 'leaflet-map'),
@@ -226,7 +256,7 @@ class Leaflet_Map_Plugin_Settings
                 'default'=>'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 'type' => 'text',
                 'helptext' => sprintf(
-                    '%1$s: <a href="http://wiki.openstreetmap.org/wiki/Tile_servers" target="_blank"> %2$s </a>. %3$s: <a href="http://devblog.mapquest.com/2016/06/15/modernization-of-mapquest-results-in-changes-to-open-tile-access/" target="_blank"> %4$s </a>. %5$s <br/> <code>[leaflet-map tileurl=http://{s}.example.com/{z}/{x}/{y}.jpg subdomains=abcd]</code>',
+                    '%1$s: <a href="http://wiki.openstreetmap.org/wiki/Tile_servers" target="_blank"> %2$s </a>. %3$s: <a href="http://devblog.mapquest.com/2016/06/15/modernization-of-mapquest-results-in-changes-to-open-tile-access/" target="_blank"> %4$s </a>. %5$s <br/> <code>[leaflet-map tileurl=http://{s}.example.com/{z}/{x}/{y}.jpg subdomains=abcd]</code><br/><code>AMap: https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z} (subdomains=1,2,3,4)</code>',
                     __('See more tile servers', 'leaflet-map'),
                     __('here', 'leaflet-map'),
                     __('Please note: free tiles from MapQuest have been discontinued without use of an API key', 'leaflet-map'),

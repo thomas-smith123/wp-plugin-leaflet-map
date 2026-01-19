@@ -67,6 +67,10 @@ class Leaflet_Geojson_Shortcode extends Leaflet_Shortcode
         $circleMarker = empty($circleMarker) ? 0 : $circleMarker;
         $circleMarker = filter_var($circleMarker, FILTER_VALIDATE_BOOLEAN);
 
+        // GPX-only: add start/end markers by default; allow disabling with endpoints=0.
+        $endpoints = isset($endpoints) ? $endpoints : 1;
+        $endpoints = filter_var($endpoints, FILTER_VALIDATE_BOOLEAN);
+
         // shortcode content becomes popup text
         $content_text = empty($content) ? '' : $content;
         // alternatively, the popup_text attribute works as popup text
@@ -162,6 +166,62 @@ if (fitbounds) {
         this.map.fitBounds( this.getBounds() );
     });
 }
+
+<?php if ($this->type === 'gpx' && $endpoints) { ?>
+// GPX: add start/end markers once the GPX has loaded and been converted to GeoJSON.
+layer.on('ready', function () {
+    try {
+        var gj = this.toGeoJSON ? this.toGeoJSON() : null;
+        if (!gj) return;
+
+        function pushLineCoords(out, geometry) {
+            if (!geometry) return;
+            var type = geometry.type;
+            var coords = geometry.coordinates;
+            if (!type || !coords) return;
+            if (type === 'LineString') {
+                for (var i = 0; i < coords.length; i++) out.push(coords[i]);
+            } else if (type === 'MultiLineString') {
+                for (var j = 0; j < coords.length; j++) {
+                    for (var k = 0; k < coords[j].length; k++) out.push(coords[j][k]);
+                }
+            } else if (type === 'GeometryCollection' && geometry.geometries) {
+                for (var g = 0; g < geometry.geometries.length; g++) pushLineCoords(out, geometry.geometries[g]);
+            }
+        }
+
+        var all = [];
+        if (gj.type === 'FeatureCollection' && gj.features) {
+            for (var f = 0; f < gj.features.length; f++) {
+                pushLineCoords(all, gj.features[f].geometry);
+            }
+        } else if (gj.type === 'Feature') {
+            pushLineCoords(all, gj.geometry);
+        } else {
+            pushLineCoords(all, gj);
+        }
+
+        if (!all.length) return;
+        var start = all[0];
+        var end = all[all.length - 1];
+        if (!start || !end) return;
+
+        var startMarker = L.marker([start[1], start[0]], markerOptions).addTo(group);
+        var endMarker = L.marker([end[1], end[0]], markerOptions).addTo(group);
+        // permanent tooltip labels so start/end are visible on the map
+        startMarker.bindPopup('Start');
+        startMarker.bindTooltip('Start', {permanent: true, direction: 'right'});
+        endMarker.bindPopup('End');
+        endMarker.bindTooltip('End', {permanent: true, direction: 'right'});
+        if (window.WPLeafletMapPlugin && window.WPLeafletMapPlugin.overlays) {
+            window.WPLeafletMapPlugin.overlays.push(startMarker);
+            window.WPLeafletMapPlugin.overlays.push(endMarker);
+        }
+    } catch (e) {
+        // ignore
+    }
+});
+<?php } ?>
 function layerStyle (feature) {
     var props = feature.properties || {};
     var style = {};

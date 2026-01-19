@@ -209,9 +209,18 @@ class Leaflet_Map_Shortcode extends Leaflet_Shortcode
         $tile_layer_options = $this->LM->filter_empty_string($tile_layer_options);
         $tile_layer_options = $this->LM->filter_null($tile_layer_options);
 
-        if (isset($tile_layer_options['subdomains']) && strpos($tile_layer_options['subdomains'], ',') !== false) {
-            // subdomains can be comma-separated
-            $tile_layer_options['subdomains'] = explode(',', $tile_layer_options['subdomains']);
+        // Leaflet supports `subdomains` as a string (e.g. "abc") or an array.
+        // Keep backward compatibility, and avoid numeric-only strings being treated as numbers.
+        if (isset($tile_layer_options['subdomains']) && is_string($tile_layer_options['subdomains'])) {
+            $subdomains_str = $tile_layer_options['subdomains'];
+
+            if (strpos($subdomains_str, ',') !== false) {
+                // subdomains can be comma-separated
+                $tile_layer_options['subdomains'] = explode(',', $subdomains_str);
+            } elseif (ctype_digit($subdomains_str) && strlen($subdomains_str) > 1) {
+                // e.g. "1234" => ["1","2","3","4"]
+                $tile_layer_options['subdomains'] = str_split($subdomains_str);
+            }
         }
 
         $atts['tile_layer_options'] = json_encode($tile_layer_options, JSON_NUMERIC_CHECK | JSON_UNESCAPED_SLASHES);
@@ -292,19 +301,75 @@ class Leaflet_Map_Shortcode extends Leaflet_Shortcode
         $detect_retina = filter_var($detect_retina, FILTER_VALIDATE_BOOLEAN);
 
         /* should be iterated for multiple maps */
+        $tiling_service = $settings->get('default_tiling_service');
+        $amap_layer = $settings->get('amap_layer');
+        $bing_layer = $settings->get('bing_layer');
+        $bing_key = $settings->get('bing_key');
+
+        $labelurl = '';
+
+        // AMap: satellite labels are derived from the base URL via style=8.
+        if (!empty($tileurl) && $tiling_service === 'amap' && $amap_layer === 'satellite') {
+            if (strpos($tileurl, 'style=') !== false) {
+                $labelurl = preg_replace('/style=\d+/', 'style=8', $tileurl);
+            } else {
+                $labelurl = $tileurl . (strpos($tileurl, '?') === false ? '?' : '&') . 'style=8';
+            }
+        }
+
+        // Bing: if aerial (no labels), overlay the labels layer (h{q}).
+        if ($tiling_service === 'bing') {
+            // If the base tileurl uses the aerial tile (a{q}) and user selected aerial, create label overlay using h{q}.
+            if (!empty($tileurl) && strpos($tileurl, 'a{q}') !== false) {
+                $labelurl = str_replace('a{q}', 'h{q}', $tileurl);
+            }
+            // If base already contains labels (h{q}), no extra overlay required.
+        }
+
         ob_start();
         ?>/*<script>*/
 var baseUrl = atob('<?php echo base64_encode(filter_var($tileurl, FILTER_SANITIZE_URL)); ?>');
-var base = (!baseUrl && window.MQ) ?
-    window.MQ.mapLayer() : L.tileLayer(baseUrl,
-        L.Util.extend({}, {
-            detectRetina: <?php echo $detect_retina ? '1' : '0'; ?>,
-        },
-        <?php echo $tile_layer_options; ?>
-        )
-    );
+var labelUrl = atob('<?php echo base64_encode(filter_var($labelurl, FILTER_SANITIZE_URL)); ?>');
+var tileOptions = L.Util.extend({}, {
+        detectRetina: <?php echo $detect_retina ? '1' : '0'; ?>
+    },
+    <?php echo $tile_layer_options; ?>
+);
+
+var QuadKeyTileLayer = L.TileLayer.extend({
+    getTileUrl: function(coords) {
+        var quadKey = '';
+        for (var i = coords.z; i > 0; i--) {
+            var digit = 0;
+            var mask = 1 << (i - 1);
+            if ((coords.x & mask) !== 0) digit += 1;
+            if ((coords.y & mask) !== 0) digit += 2;
+            quadKey += digit;
+        }
+
+        return L.Util.template(this._url, L.Util.extend({
+            s: this._getSubdomain(coords),
+            x: coords.x,
+            y: coords.y,
+            z: coords.z,
+            q: quadKey,
+            r: L.Browser.retina ? '@2x' : ''
+        }, this.options));
+    }
+});
+
+function makeTileLayer(url) {
+    if (!url) return null;
+    if (url.indexOf('{q}') !== -1) {
+        return new QuadKeyTileLayer(url, tileOptions);
+    }
+    return L.tileLayer(url, tileOptions);
+}
+
+var base = (!baseUrl && window.MQ) ? window.MQ.mapLayer() : makeTileLayer(baseUrl);
+var labelLayer = makeTileLayer(labelUrl);
     var options = L.Util.extend({}, {
-        layers: [base],
+        layers: labelLayer ? [base, labelLayer] : [base],
         attributionControl: false
     },
     <?php echo $map_options; ?>,

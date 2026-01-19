@@ -367,67 +367,6 @@ Same options as [leaflet-image-overlay]
 [leaflet-video-overlay src="https://www.mapbox.com/bites/00188/patricia_nasa.webm" bounds="32,-130;13,-100"]
 ```
 
-## Frequently Asked Questions
+## New Features
 
-### How Can I Add another Leaflet Plugin?
-
-There are some steps you can take, currently, to add another Leaflet Plugin to enhance this WordPress plugin. In general, you can add an action to trigger when Leaflet is loaded, and add custom JavaScript and any dependencies your plugin needs:
-
-Here's an example with MapBox Fullscreen plugin:
-
-functions.php
-
-```php
-add_action('leaflet_map_loaded', 'fs_leaflet_loaded');
-function fs_leaflet_loaded() {
-  wp_enqueue_script('full_screen_leaflet', 'https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js', Array('wp_leaflet_map'), '1.0', true);
-  wp_enqueue_style('full_screen_leaflet_styles', 'https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css');
-
-  // custom js
-  wp_enqueue_script('full_screen_custom', get_theme_file_uri( '/js/full-screen.js' ), Array('full_screen_leaflet'), '1.0', true);
-}
-```
-
-/js/full-screen.js
-
-```js
-(function () {
-  function main() {
-    if (!window.WPLeafletMapPlugin) {
-      console.log('no plugin found!');
-      return;
-    }
-
-    // iterate any of these arrays: `maps`, `markers`, `lines`, `circles`, `geojsons`
-    var maps = window.WPLeafletMapPlugin.maps;
-
-    // Note: `markergroups` is an *object*. If you'd like to iterate it, you can do it like this:
-    // var markergroups = window.WPLeafletMapPlugin.markergroups;
-    // var keys = Object.keys(markergroups);
-    // for (var i = 0, len = keys.length; i < len; i++) {
-    //   var markergroup = markergroups[keys[i]];
-    // }
-
-    for (var i = 0, len = maps.length; i < len; i++) {
-      var map = maps[i];
-      map.whenReady(function () {
-        this.addControl(new L.Control.Fullscreen());
-      });
-    }
-  }
-
-  window.addEventListener('load', main);
-})();
-```
-
-### Are there some examples for adding a Leaflet Plugin and other functions?
-
-Take a look at the functions of [Extensions for Leaflet Map](https://wordpress.org/plugins/extensions-leaflet-map/).
-
-## Contributing
-
-[View Contribution guidelines](https://github.com/bozdoz/wp-plugin-leaflet-map/blob/master/CONTRIBUTING.md)
-
-## Wish List
-
-- A map editor/shortcode generator (so users can see what they're adding to the page)
+Amap and bing map is added. And, for the usage of show gpx file trail to the map, I have added the start point and end point marks in the map.
